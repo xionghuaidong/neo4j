@@ -19,12 +19,14 @@
  */
 package org.neo4j.kernel.api.impl.schema.vector;
 
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.neo4j.graphdb.schema.IndexSetting;
 import org.neo4j.internal.schema.IndexConfig;
 import org.neo4j.kernel.api.vector.VectorSimilarityFunction;
 import org.neo4j.values.storable.IntegralValue;
 import org.neo4j.values.storable.TextValue;
 import org.neo4j.values.storable.Value;
+import org.neo4j.values.storable.Values;
 
 public class VectorUtils {
 
@@ -52,6 +54,34 @@ public class VectorUtils {
         }
     }
 
+    public static int vectorHnswMFrom(IndexConfig config) {
+        final var setting = IndexSetting.vector_Hnsw_M();
+        final var defaultValue = Values.intValue(Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN);
+        final var hnswM = VectorUtils.<IntegralValue>getDefaultedFrom(config, setting, defaultValue)
+                .intValue();
+        if (hnswM <= 0) {
+            throw new IllegalArgumentException(
+                    "Invalid %s provided.".formatted(IndexConfig.class.getSimpleName()),
+                    new AssertionError("'%s' is expected to be positive. Provided: %d"
+                            .formatted(setting.getSettingName(), hnswM)));
+        }
+        return hnswM;
+    }
+
+    public static int vectorHnswEfConstructionFrom(IndexConfig config) {
+        final var setting = IndexSetting.vector_Hnsw_Ef_Construction();
+        final var defaultValue = Values.intValue(Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+        final var hnswEfConstruction = VectorUtils.<IntegralValue>getDefaultedFrom(config, setting, defaultValue)
+                .intValue();
+        if (hnswEfConstruction <= 0) {
+            throw new IllegalArgumentException(
+                    "Invalid %s provided.".formatted(IndexConfig.class.getSimpleName()),
+                    new AssertionError("'%s' is expected to be positive. Provided: %d"
+                            .formatted(setting.getSettingName(), hnswEfConstruction)));
+        }
+        return hnswEfConstruction;
+    }
+
     private static <T extends Value> T getExpectedFrom(IndexConfig config, IndexSetting setting) {
         final var name = setting.getSettingName();
         return config.getOrThrow(
@@ -59,6 +89,11 @@ public class VectorUtils {
                 () -> new IllegalArgumentException(
                         "Invalid %s provided.".formatted(IndexConfig.class.getSimpleName()),
                         new AssertionError("'%s' is expected to have been set".formatted(name))));
+    }
+
+    private static <T extends Value> T getDefaultedFrom(IndexConfig config, IndexSetting setting, T defaultValue) {
+        final var name = setting.getSettingName();
+        return config.getOrDefault(name, defaultValue);
     }
 
     private VectorUtils() {}

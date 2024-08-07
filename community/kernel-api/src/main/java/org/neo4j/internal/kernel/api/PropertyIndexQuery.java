@@ -191,8 +191,8 @@ public abstract class PropertyIndexQuery implements IndexQuery {
         return new FulltextSearchPredicate(query, queryAnalyzer);
     }
 
-    public static NearestNeighborsPredicate nearestNeighbors(int k, float[] query) {
-        return new NearestNeighborsPredicate(k, query);
+    public static NearestNeighborsPredicate nearestNeighbors(int k, int numberOfCandidates, float[] query) {
+        return new NearestNeighborsPredicate(k, numberOfCandidates, query);
     }
 
     public static ValueTuple asValueTuple(PropertyIndexQuery.ExactPredicate... query) {
@@ -818,11 +818,13 @@ public abstract class PropertyIndexQuery implements IndexQuery {
 
     public static final class NearestNeighborsPredicate extends PropertyIndexQuery {
         private final int k;
+        private final int numberOfCandidates;
         private final float[] query;
 
-        private NearestNeighborsPredicate(int k, float... query) {
+        private NearestNeighborsPredicate(int k, int numberOfCandidates, float... query) {
             super(TokenRead.NO_TOKEN);
             this.k = k;
+            this.numberOfCandidates = numberOfCandidates;
             this.query = query;
         }
 
@@ -846,6 +848,10 @@ public abstract class PropertyIndexQuery implements IndexQuery {
             return k;
         }
 
+        public int numberOfCandidates() {
+            return numberOfCandidates;
+        }
+
         public float[] query() {
             return query;
         }
@@ -862,12 +868,12 @@ public abstract class PropertyIndexQuery implements IndexQuery {
                 return false;
             }
             NearestNeighborsPredicate that = (NearestNeighborsPredicate) o;
-            return k == that.k && Arrays.equals(query, that.query);
+            return k == that.k && numberOfCandidates == that.numberOfCandidates && Arrays.equals(query, that.query);
         }
 
         @Override
         public int hashCode() {
-            int result = Objects.hash(super.hashCode(), k);
+            int result = Objects.hash(super.hashCode(), k, numberOfCandidates);
             result = 31 * result + Arrays.hashCode(query);
             return result;
         }

@@ -133,8 +133,9 @@ class VectorIndexReader extends AbstractLuceneIndexReader {
                         nearestNeighborsPredicate.numberOfNeighbors(),
                         constraints.limit().orElse(Integer.MAX_VALUE));
                 final var effectiveK = k + constraints.skip().orElse(0);
+                final var numberOfCandidates = Math.max(effectiveK, nearestNeighborsPredicate.numberOfCandidates());
                 yield VectorQueryFactory.approximateNearestNeighbors(
-                        documentStructure, nearestNeighborsPredicate.query(), Math.toIntExact(effectiveK));
+                        documentStructure, nearestNeighborsPredicate.query(), Math.toIntExact(numberOfCandidates));
             }
             default -> throw invalidQuery(IllegalArgumentException::new, predicate);
         };

@@ -34,13 +34,17 @@ public class LuceneKnnVectorFormatV2 extends KnnVectorsFormat {
 
     // This constructor is only needed for Lucene Service Loader
     public LuceneKnnVectorFormatV2() {
-        this(Integer.MAX_VALUE);
+        this(
+                Integer.MAX_VALUE,
+                Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+                Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
     }
 
-    public LuceneKnnVectorFormatV2(int maxDimensions) {
+    public LuceneKnnVectorFormatV2(int maxDimensions, int maxConn, int beamWidth) {
         super(LUCENE_VECTOR_FORMAT_V2_NAME);
         this.maxDimensions = maxDimensions;
-        this.vectorsFormat = new Lucene99HnswVectorsFormat();
+        this.vectorsFormat = new Lucene99HnswVectorsFormat(
+                maxConn, beamWidth, Lucene99HnswVectorsFormat.DEFAULT_NUM_MERGE_WORKER, null);
     }
 
     @Override

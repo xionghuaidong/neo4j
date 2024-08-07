@@ -25,9 +25,9 @@ import org.apache.lucene.codecs.lucene99.Lucene99Codec;
 public class VectorCodecV2 extends Lucene99Codec {
     private final LuceneKnnVectorFormatV2 vectorFormat;
 
-    public VectorCodecV2(int maxDimensions) {
+    public VectorCodecV2(int maxDimensions, int maxConn, int beamWidth) {
         super();
-        this.vectorFormat = new LuceneKnnVectorFormatV2(maxDimensions);
+        this.vectorFormat = new LuceneKnnVectorFormatV2(maxDimensions, maxConn, beamWidth);
     }
 
     @Override

@@ -22,6 +22,8 @@ package org.neo4j.cypher.internal.optionsmap
 import org.neo4j.configuration.Config
 import org.neo4j.cypher.internal.runtime.QueryContext
 import org.neo4j.graphdb.schema.IndexSettingImpl.VECTOR_DIMENSIONS
+import org.neo4j.graphdb.schema.IndexSettingImpl.VECTOR_HNSW_EF_CONSTRUCTION
+import org.neo4j.graphdb.schema.IndexSettingImpl.VECTOR_HNSW_M
 import org.neo4j.graphdb.schema.IndexSettingImpl.VECTOR_SIMILARITY_FUNCTION
 import org.neo4j.internal.schema.IndexConfig
 import org.neo4j.internal.schema.IndexProviderDescriptor
@@ -47,6 +49,8 @@ case class CreateVectorIndexOptionsConverter(context: QueryContext)
   private val schemaType = "vector index"
   private val dimensionsSetting = VECTOR_DIMENSIONS.getSettingName
   private val similarityFunctionSetting = VECTOR_SIMILARITY_FUNCTION.getSettingName
+  private val hnswMSetting = VECTOR_HNSW_M.getSettingName
+  private val hnswEfConstructionSetting = VECTOR_HNSW_EF_CONSTRUCTION.getSettingName
 
   override protected val hasMandatoryOptions: Boolean = true
 
@@ -102,7 +106,9 @@ case class CreateVectorIndexOptionsConverter(context: QueryContext)
         assertValidConfigValues(
           indexProvider,
           hm.get(VECTOR_DIMENSIONS.getSettingName),
-          hm.get(VECTOR_SIMILARITY_FUNCTION.getSettingName)
+          hm.get(VECTOR_SIMILARITY_FUNCTION.getSettingName),
+          hm.get(VECTOR_HNSW_M.getSettingName),
+          hm.get(VECTOR_HNSW_EF_CONSTRUCTION.getSettingName)
         )
 
         hm
@@ -149,7 +155,9 @@ case class CreateVectorIndexOptionsConverter(context: QueryContext)
   private def assertValidConfigValues(
     maybeIndexProvider: Option[IndexProviderDescriptor],
     dimensionValue: AnyRef,
-    similarityFunctionValue: AnyRef
+    similarityFunctionValue: AnyRef,
+    hnswMValue: AnyRef,
+    hnswEfConstructionValue: AnyRef
   ): Unit = {
     val version = maybeIndexProvider.map(VectorIndexVersion.fromDescriptor).getOrElse(
       VectorIndexVersion.latestSupportedVersion(KernelVersion.getLatestVersion(context.getConfig))
@@ -184,6 +192,46 @@ case class CreateVectorIndexOptionsConverter(context: QueryContext)
         throw new InvalidArgumentsException(
           s"Could not create $schemaType with specified index config '$similarityFunctionSetting'. Expected a String."
         )
+    }
+
+    // Check HNSW m
+    if (hnswMValue != null) {
+      val hnswMCheck = hnswMValue match {
+        case l: java.lang.Long =>
+          val hnswM = l.longValue()
+          1 <= hnswM && hnswM <= Int.MaxValue
+        case i: Integer =>
+          val hnswM = i.intValue()
+          1 <= hnswM && hnswM <= Int.MaxValue
+        case _ =>
+          throw new InvalidArgumentsException(
+            s"Could not create $schemaType with specified index config '$dimensionsSetting'. Expected an Integer."
+          )
+      }
+      Preconditions.checkArgument(
+        hnswMCheck,
+        "'%s' must be between %d and %d inclusively".formatted(hnswMSetting, 1, Int.MaxValue)
+      )
+    }
+
+    // Check HNSW ef_construction
+    if (hnswEfConstructionValue != null) {
+      val hnswEfConstructionCheck = hnswEfConstructionValue match {
+        case l: java.lang.Long =>
+          val hnswEfConstruction = l.longValue()
+          1 <= hnswEfConstruction && hnswEfConstruction <= Int.MaxValue
+        case i: Integer =>
+          val hnswEfConstruction = i.intValue()
+          1 <= hnswEfConstruction && hnswEfConstruction <= Int.MaxValue
+        case _ =>
+          throw new InvalidArgumentsException(
+            s"Could not create $schemaType with specified index config '$dimensionsSetting'. Expected an Integer."
+          )
+      }
+      Preconditions.checkArgument(
+        hnswEfConstructionCheck,
+        "'%s' must be between %d and %d inclusively".formatted(hnswEfConstructionSetting, 1, Int.MaxValue)
+      )
     }
   }
 

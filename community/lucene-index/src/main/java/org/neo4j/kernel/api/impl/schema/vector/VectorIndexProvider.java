@@ -116,8 +116,10 @@ public class VectorIndexProvider extends AbstractLuceneIndexProvider {
             StorageEngineIndexingBehaviour indexingBehaviour) {
         final var indexConfig = descriptor.getIndexConfig();
         final var dimensions = VectorUtils.vectorDimensionsFrom(indexConfig);
+        final var hnswM = VectorUtils.vectorHnswMFrom(indexConfig);
+        final var hnswEfConstruction = VectorUtils.vectorHnswEfConstructionFrom(indexConfig);
 
-        final var codec = new VectorCodecV2(dimensions);
+        final var codec = new VectorCodecV2(dimensions, hnswM, hnswEfConstruction);
         final var writerConfigBuilder = new IndexWriterConfigBuilder(VectorModes.POPULATION, config).withCodec(codec);
         final var luceneIndex = VectorIndexBuilder.create(descriptor, documentStructure, readOnlyChecker, config)
                 .withFileSystem(fileSystem)

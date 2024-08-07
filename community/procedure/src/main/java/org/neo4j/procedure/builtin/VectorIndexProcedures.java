@@ -145,13 +145,15 @@ public class VectorIndexProcedures {
     public Stream<NodeNeighbor> queryNodeVectorIndex(
             @Name("indexName") String name,
             @Name("numberOfNearestNeighbours") Long numberOfNearestNeighbours,
-            @Name("query") AnyValue candidateQuery)
+            @Name("query") AnyValue candidateQuery,
+            @Name(value = "numberOfCandidates", defaultValue = "0") Long numberOfCandidates)
             throws KernelException {
-        final var query = validateQueryArguments(name, numberOfNearestNeighbours, candidateQuery);
+        final var query = validateQueryArguments(name, numberOfNearestNeighbours, candidateQuery, numberOfCandidates);
         if (callContext.isSystemDatabase()) {
             return Stream.empty();
         }
-        return new NodeIndexQuery(tx, ktx, name).query(Math.toIntExact(numberOfNearestNeighbours), query);
+        return new NodeIndexQuery(tx, ktx, name)
+                .query(Math.toIntExact(numberOfNearestNeighbours), Math.toIntExact(numberOfCandidates), query);
     }
 
     @Description(
@@ -165,20 +167,28 @@ public class VectorIndexProcedures {
     public Stream<RelationshipNeighbor> queryRelationshipVectorIndex(
             @Name("indexName") String name,
             @Name("numberOfNearestNeighbours") Long numberOfNearestNeighbours,
-            @Name("query") AnyValue candidateQuery)
+            @Name("query") AnyValue candidateQuery,
+            @Name(value = "numberOfCandidates", defaultValue = "0") Long numberOfCandidates)
             throws KernelException {
-        final var query = validateQueryArguments(name, numberOfNearestNeighbours, candidateQuery);
+        final var query = validateQueryArguments(name, numberOfNearestNeighbours, candidateQuery, numberOfCandidates);
         if (callContext.isSystemDatabase()) {
             return Stream.empty();
         }
-        return new RelationshipIndexQuery(tx, ktx, name).query(Math.toIntExact(numberOfNearestNeighbours), query);
+        return new RelationshipIndexQuery(tx, ktx, name)
+                .query(Math.toIntExact(numberOfNearestNeighbours), Math.toIntExact(numberOfCandidates), query);
     }
 
     private static VectorCandidate validateQueryArguments(
-            String name, Long numberOfNearestNeighbours, AnyValue candidateQuery) {
+            String name, Long numberOfNearestNeighbours, AnyValue candidateQuery, Long numberOfCandidates) {
         Objects.requireNonNull(name, "'indexName' must not be null");
         Objects.requireNonNull(numberOfNearestNeighbours, "'numberOfNearestNeighbours' must not be null");
+        Objects.requireNonNull(numberOfCandidates, "'numberOfCandidates' must not be null");
         Preconditions.checkArgument(numberOfNearestNeighbours > 0, "'numberOfNearestNeighbours' must be positive");
+        if (numberOfCandidates != 0) {
+            Preconditions.checkArgument(
+                    numberOfCandidates >= numberOfNearestNeighbours,
+                    "explicitly specified 'numberOfCandidates' must be greater than or equal to 'numberOfNearestNeighbours'");
+        }
         Objects.requireNonNull(candidateQuery, "'query' must not be null");
         if (candidateQuery == Values.NO_VALUE) {
             throw new IllegalArgumentException(
@@ -356,7 +366,7 @@ public class VectorIndexProcedures {
 
         abstract Stream<NEIGHBOR> stream(CURSOR cursor, int k);
 
-        Stream<NEIGHBOR> query(int k, VectorCandidate query) throws KernelException {
+        Stream<NEIGHBOR> query(int k, int numberOfCandidates, VectorCandidate query) throws KernelException {
             final var validatedQuery = validateAndConvertQuery(index, query);
             final var cursor = cursor(ktx.cursors(), ktx.cursorContext(), ktx.memoryTracker());
             seek(
@@ -365,7 +375,7 @@ public class VectorIndexProcedures {
                     ktx.dataRead().indexReadSession(index),
                     cursor,
                     IndexQueryConstraints.unconstrained(),
-                    PropertyIndexQuery.nearestNeighbors(k, validatedQuery));
+                    PropertyIndexQuery.nearestNeighbors(k, numberOfCandidates, validatedQuery));
             return stream(cursor, k);
         }
 
